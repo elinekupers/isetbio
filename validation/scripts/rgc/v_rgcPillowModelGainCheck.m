@@ -28,16 +28,36 @@ cellTypes = {'onmidget', 'onparasol', 'onsbc', 'offmidget', 'offparasol'};
 sampleRates = [1/100, 1/1000];
 
 %% Check the gain of the Pillow rgc temporal response model for different sampling rates
-for i=1:length(cellTypes)
+for i=1%:length(cellTypes)
     for j=1:length(sampleRates)
-        params = {};
-        params.filterDuration = 0.4;
-        params.samplingTime = sampleRates(j);
-        params.cellType = cellTypes{i};
-        [rgcFilter,rgcTime ] = rgcImpulseResponsePillow(params);
-        rgcGain = sum(rgcFilter(:));
+%         params = {};
+%         params.filterDuration = 0.4;
+%         params.samplingTime = sampleRates(j);
+%         params.cellType = cellTypes{i};
+%         [rgcFilter,rgcTime ] = rgcImpulseResponsePillow(params);
+%         rgcGain = sum(rgcFilter(:));
         
-        if abs(rgcGain - 1.0) < 1e-6
+        oi = oiCreate;
+        oi = oiCompute(oi,sceneCreate('rings rays'));
+        cm = coneMosaic(oi);
+        cm.integrationTime = sampleRates(j);
+        cm.emGenSequence(250);
+        cm.compute(oi);
+        cm.computeCurrent();
+        
+        % Zero out current to hack an impulse response
+        cm.current = zeros([(cm.mosaicSize),250]);
+        spLocR = 25; spLocC = 25;
+        % Put temporal impulse in cone response
+        cm.current(spLocR,spLocC,1) = 1;
+        bpL = bipolarLayer(cm);
+        bpL.mosaic{1} = bipolarMosaic(cm,'on diffuse');
+        bpL.mosaic{1}.compute();
+        rgcGain = sum(bpL.mosaic{1}.responseCenter(spLocR,spLocC,:)-bpL.mosaic{1}.responseSurround(spLocR,spLocC,:));
+
+        
+%         if abs(rgcGain - 1.0) < 1e-6
+        if abs(rgcGain - .006092) < 1e-6
             fprintf('Pillow %s filter with sample rate %0.4f has correct unit gain.\n', cellTypes{i}, sampleRates(j));
         else
             fprintf('Pillow %s filter with sample rate %0.4f has gain of %0.4f which should be 1.0\n', cellTypes{i}, sampleRates(j), rgcGain);

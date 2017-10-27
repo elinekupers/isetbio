@@ -147,8 +147,13 @@ switch obj.cellType
         % Off cell types
         signVal = -1;
 end
-            
-% Down sample the time axis to match the cone mosaic sample times
-bipolarFilt = signVal*interp1(timeBase,bipolarFilt,cmosaic.timeAxis,'linear',0);
+
+
+% % Down sample the time axis to match the cone mosaic sample times
+% bipolarFilt = gainFactor*signVal*interp1(timeBase,bipolarFilt,cmosaic.timeAxis,'linear',0);
+bipolarFiltPre = signVal*interp1(timeBase,bipolarFilt,cmosaic.timeAxis,'linear',0);
+
+gainBase = 0.118176; % the RGC gains were calibrated at base time scale 0.01 sec
+bipolarFilt = (gainBase/sum(bipolarFiltPre(:)))*bipolarFiltPre;
 
 end
